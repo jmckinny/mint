@@ -360,6 +360,41 @@ static int check_no_recursion(ExprTree *fun_body, const char *fun_id, Env_t *env
     return has_recursion;
 }
 
+static int param_used(const char *param_id, ExprTree *fun_body) {
+    if (fun_body == NULL) {
+        return 0;
+    }
+
+    switch(fun_body->expr) {
+        case ID:
+            if (strcmp(param_id, fun_body->value.id) == 0) {
+                return 1;
+            }
+        case Binop:
+        case Argument:
+            return param_used(param_id, fun_body->left)
+                || param_used(param_id, fun_body->right);
+        case Application:
+            return param_used(param_id, fun_body->right);
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+static void check_for_unused_params(ExprTree *params, ExprTree *fun_body) {
+    while (params != NULL) {
+        const char *param_id = params->left->value.id;
+
+        if (!param_used(param_id, fun_body)) {
+            warnx("warning: parameter \"%s\" unused", param_id);
+        }
+
+        params = params->right;
+    }
+}
+
 static void eval_fun(ExprTree **t, Env_t *env) {
     ExprTree *tree = *t;
     int num_params;
@@ -369,6 +404,7 @@ static void eval_fun(ExprTree **t, Env_t *env) {
 
     if (validate_params(tree->left, tree->value.id) == 0
             && check_no_recursion(tree->right, tree->value.id, env) == 0) {
+        check_for_unused_params(tree->left, tree->right);
         extend_env(env, tree->value.id, tree);
     }
 
