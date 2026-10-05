@@ -673,6 +673,7 @@ static void eval_application(ExprTree **t, Env_t *env, char in_fun) {
 
     if (in_fun) {
         pop_params(params, num_params, env);
+        free_expr_tree(fun);
         return;
     }
 
